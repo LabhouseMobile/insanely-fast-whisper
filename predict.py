@@ -1,9 +1,10 @@
 import os
-from typing import Any
+import sys
 import time
 import subprocess
 import torch
 import numpy as np
+from typing import Any
 from transformers import (
     WhisperFeatureExtractor,
     WhisperTokenizerFast,
@@ -107,6 +108,21 @@ class Predictor(BasePredictor):
             default=None,
             description="Provide a hf.co/settings/token for Pyannote.audio to diarise the audio clips. You need to agree to the terms in 'https://huggingface.co/pyannote/speaker-diarization-3.1' and 'https://huggingface.co/pyannote/segmentation-3.0' first.",
         ),
+        num_speakers: int = Input(
+            default=None,
+            ge=1,
+            description="Exact number of speakers present in the audio file. Useful when the exact number of participants in the conversation is known. Must be at least 1. Cannot be used together with min_speakers or max_speakers. (default: None)",
+        ),
+        min_speakers: int = Input(
+            default=None,
+            ge=1,
+            description="Minimum number of speakers system should consider in audio file. Must be at least 1. Cannot be used together with num_speakers and be greater than max_speakers. (default: None)",
+        ),
+        max_speakers: int = Input(
+            default=None,
+            ge=1,
+            description="Maximum number of speakers system should consider in audio file. Must be at least 1. Cannot be used together with num_speakers and be less than min_speakers. (default: None)",
+        ),
     ) -> Any:
         """Transcribes and optionally translates a single audio file"""
 
@@ -114,6 +130,16 @@ class Predictor(BasePredictor):
             assert (
                 hf_token is not None
             ), "Please provide hf_token to diarise the audio clips"
+
+        assert not (
+            num_speakers is not None and (min_speakers is not None or max_speakers is not None)
+        ), "num_speakers cannot be used together with either min_speakers or max_speakers"
+
+        assert not (
+            min_speakers is not None
+            and max_speakers is not None
+            and min_speakers >= max_speakers
+        ), "min_speakers must be less than max_speakers if both are provided"
 
         outputs = self.pipe(
             str(audio),
@@ -143,7 +169,9 @@ class Predictor(BasePredictor):
             if self.diarization_pipeline is not None:
                 print("Segmenting the audio clips.")
                 inputs, diarizer_inputs = preprocess_inputs(inputs=str(audio))
-                segments = diarize_audio(diarizer_inputs, self.diarization_pipeline)
+                segments = diarize_audio(
+                    diarizer_inputs, self.diarization_pipeline, num_speakers, min_speakers, max_speakers
+                )
                 segmented_transcript = post_process_segments_and_transcripts(
                     segments, outputs["chunks"], group_by_speaker=False
                 )
@@ -203,9 +231,12 @@ def preprocess_inputs(inputs):
     return inputs, diarizer_inputs
 
 
-def diarize_audio(diarizer_inputs, diarization_pipeline):
+def diarize_audio(diarizer_inputs, diarization_pipeline, num_speakers, min_speakers, max_speakers):
     diarization = diarization_pipeline(
         {"waveform": diarizer_inputs, "sample_rate": 16000},
+        num_speakers=num_speakers,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
     )
 
     segments = []
@@ -256,7 +287,8 @@ def diarize_audio(diarizer_inputs, diarization_pipeline):
 
 def post_process_segments_and_transcripts(new_segments, transcript, group_by_speaker):
     # get the end timestamps for each chunk from the ASR output
-    end_timestamps = np.array([chunk["timestamp"][-1] for chunk in transcript])
+    end_timestamps = np.array(
+        [chunk["timestamp"][-1] if chunk["timestamp"][-1] is not None else sys.float_info.max for chunk in transcript])
     segmented_preds = []
 
     # align the diarizer timestamps and the ASR timestamps
@@ -286,5 +318,8 @@ def post_process_segments_and_transcripts(new_segments, transcript, group_by_spe
         # crop the transcripts and timestamp lists according to the latest timestamp (for faster argmin)
         transcript = transcript[upto_idx + 1 :]
         end_timestamps = end_timestamps[upto_idx + 1 :]
+
+        if len(end_timestamps) == 0:
+            break
 
     return segmented_preds
