@@ -4,6 +4,10 @@ An opinionated CLI to transcribe Audio files w/ Whisper on-device! Powered by �
 
 **TL;DR** - Transcribe **150** minutes (2.5 hours) of audio in less than **98** seconds - with [OpenAI's Whisper Large v3](https://huggingface.co/openai/whisper-large-v3). Blazingly fast transcription is now a reality!⚡️
 
+```
+pipx install insanely-fast-whisper==0.0.15 --force
+```
+
 <p align="center">
 <img src="https://huggingface.co/datasets/reach-vb/random-images/resolve/main/insanely-fast-whisper-img.png" width="615" height="308">
 </p>
@@ -36,7 +40,6 @@ Install `insanely-fast-whisper` with `pipx` (`pip install pipx` or `brew install
 ```bash
 pipx install insanely-fast-whisper
 ```
-*Note: Due to a dependency on [`onnxruntime`, Python 3.12 is currently not supported](https://github.com/microsoft/onnxruntime/issues/17842). You can force a Python version (e.g. 3.11) by adding `--python python3.11` to the command.*
 
 ⚠️ If you have python 3.11.XX installed, `pipx` may parse the version incorrectly and install a very old version of `insanely-fast-whisper` without telling you (version `0.0.8`, which won't work anymore with the current `BetterTransformers`). In that case, you can install the latest version by passing `--ignore-requires-python` to `pip`:
 
@@ -99,8 +102,16 @@ The `insanely-fast-whisper` repo provides an all round support for running Whisp
                         Use Flash Attention 2. Read the FAQs to see how to install FA2 correctly. (default: False)
   --timestamp {chunk,word}
                         Whisper supports both chunked as well as word level timestamps. (default: chunk)
-  --hf_token
+  --hf-token HF_TOKEN
                         Provide a hf.co/settings/token for Pyannote.audio to diarise the audio clips
+  --diarization_model DIARIZATION_MODEL
+                        Name of the pretrained model/ checkpoint to perform diarization. (default: pyannote/speaker-diarization)
+  --num-speakers NUM_SPEAKERS
+                        Specifies the exact number of speakers present in the audio file. Useful when the exact number of participants in the conversation is known. Must be at least 1. Cannot be used together with --min-speakers or --max-speakers. (default: None)
+  --min-speakers MIN_SPEAKERS
+                        Sets the minimum number of speakers that the system should consider during diarization. Must be at least 1. Cannot be used together with --num-speakers. Must be less than or equal to --max-speakers if both are specified. (default: None)
+  --max-speakers MAX_SPEAKERS
+                        Defines the maximum number of speakers that the system should consider in diarization. Must be at least 1. Cannot be used together with --num-speakers. Must be greater than or equal to --min-speakers if both are specified. (default: None)
 ```
 
 ## Frequently Asked Questions
