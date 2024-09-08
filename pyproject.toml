@@ -9,7 +9,7 @@ authors = [
 dependencies = [
     "transformers",
     "accelerate",
-    "pyannote-audio>=3.1.0",
+    "pyannote-audio==3.3.1",
     "setuptools>=68.2.2",
     "rich>=13.7.0",
 ]
