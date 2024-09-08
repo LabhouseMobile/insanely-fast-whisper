@@ -13,7 +13,7 @@ build:
     - "more-itertools==10.1.0"
     - "transformers==4.37.2"
     - "ffmpeg-python==0.2.0"
-    - "openai-whisper==20231106"
+    - "openai-whisper==20231117"
     - "setuptools>=68.2.2"
     - "optimum==1.14.0"
     - "pyannote-audio==3.3.1"
